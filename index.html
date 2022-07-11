@@ -7,16 +7,27 @@
     />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <title>pack man</title>
-    <script defer src="app.js"></script>
     <style>
       body {
         margin: 0;
         background-color: black;
         overflow: hidden;
       }
+      p {
+        color: aliceblue;
+        font-family: sans-serif;
+        font-size: 14px;
+        margin-bottom: 0;
+        padding: 10px;
+      }
     </style>
   </head>
   <body>
+    <p><span>Score: </span><span> </span></p>
     <canvas id="canvas"></canvas>
+    <!-- <script type="module" src="contextService.js"></script>
+    <script type="module" src="map.js"></script>
+    <script type="module" src="gameObjects.js"></script> -->
+    <script type="module" src="./build/app.js"></script>
   </body>
 </html>

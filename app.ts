@@ -1,66 +1,12 @@
-const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-const context = canvas.getContext("2d");
-// innerWidth is coming form window element innerWidth
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-class Boundary {
-  static width = 40;
-  static height = 40;
+"use strict";
+import drawMap from "./src/map.js";
+import { context, canvas } from "./src/contextService.js";
+import { Player, Boundary, Ghost, Pellet, PowerUp } from "./src/gameObjects.js";
+let myReq = 0;
+let pause = false;
+let lost = false;
+let win = false;
 
-  constructor(
-    public position: { x: number; y: number },
-    public width: number = 40,
-    public height: number = 40
-  ) {}
-  draw() {
-    if (context) context.fillStyle = "blue";
-    context?.fillRect(
-      this.position.x,
-      this.position.y,
-      this.width,
-      this.height
-    );
-  }
-}
-
-class Player {
-  position!: { x: number; y: number };
-  velocity!: { x: number; y: number };
-  reduce = 15;
-  constructor(config: {
-    position: { x: number; y: number };
-    velocity: { x: number; y: number };
-    reduce?: number;
-  }) {
-    this.position = config.position;
-    this.velocity = config.velocity;
-    this.reduce = config.reduce || this.reduce;
-  }
-  draw() {
-    // tell context to begin the draw path
-    context?.beginPath();
-    context?.arc(this.position.x, this.position.y, this.reduce, 0, Math.PI * 2);
-    if (context) context.fillStyle = "yellow";
-    context?.fill();
-    context?.closePath();
-  }
-  update() {
-    this.draw();
-    this.position.x += this.velocity.x;
-    this.position.y += this.velocity.y;
-  }
-}
-// - mean its square
-// " " mean its empty space
-const map = [
-  ["-", "-", "-", "-", "-", "-", "-"],
-  ["-", " ", " ", " ", " ", " ", "-"],
-  ["-", " ", "-", " ", "-", " ", "-"],
-  ["-", " ", " ", " ", " ", " ", "-"],
-  ["-", " ", "-", " ", "-", " ", "-"],
-  ["-", " ", " ", " ", " ", " ", "-"],
-  ["-", "-", "-", "-", "-", "-", "-"],
-];
 const keys = {
   w: {
     pressed: false,
@@ -76,7 +22,25 @@ const keys = {
   },
 };
 let lastKey = "";
-const boundaries: Boundary[] = [];
+const ghosts: Ghost[] = [
+  new Ghost({
+    position: {
+      x: Boundary.width * 6 + Boundary.width / 2,
+      y: Boundary.height + Boundary.height / 2,
+    },
+    velocity: { x: Ghost.speed, y: 0 },
+    color: "red",
+  }),
+  new Ghost({
+    position: {
+      x: Boundary.width * 6 + Boundary.width / 2,
+      y: Boundary.height * 3 + Boundary.height / 2,
+    },
+    velocity: { x: Ghost.speed, y: 0 },
+    color: "pink",
+  }),
+];
+
 const player = new Player({
   position: {
     x: Boundary.width + Boundary.width / 2,
@@ -87,31 +51,41 @@ const player = new Player({
     y: 0,
   },
 });
-map.forEach((row, i) => {
-  row.forEach((symbol, j) => {
-    switch (symbol) {
-      case "-":
-        boundaries.push(
-          new Boundary({ x: Boundary.width * j, y: Boundary.height * i })
-        );
-        break;
-    }
-  });
-});
-function circleCollidesWithRec(circle: Player, rectangle: Boundary) {
+const map = [
+  ["1", "-", "-", "-", "-", "-", "-", "-", "-", "-", "2"],
+  ["|", ".", ".", ".", ".", ".", ".", ".", ".", ".", "|"],
+  ["|", ".", "b", ".", "[", "7", "]", ".", "b", ".", "|"],
+  ["|", ".", ".", ".", ".", "_", ".", ".", ".", ".", "|"],
+  ["|", ".", "[", "]", ".", ".", ".", "[", "]", ".", "|"],
+  ["|", ".", ".", ".", ".", "^", ".", ".", ".", ".", "|"],
+  ["|", ".", "b", ".", "[", "+", "]", ".", "b", ".", "|"],
+  ["|", ".", ".", ".", ".", "_", ".", ".", ".", ".", "|"],
+  ["|", ".", "[", "]", ".", ".", ".", "[", "]", ".", "|"],
+  ["|", ".", ".", ".", ".", "^", ".", ".", ".", ".", "|"],
+  ["|", ".", "b", ".", "[", "5", "]", ".", "b", ".", "|"],
+  ["|", ".", ".", ".", ".", ".", ".", ".", ".", "p", "|"],
+  ["4", "-", "-", "-", "-", "-", "-", "-", "-", "-", "3"],
+];
+const boundaries: Boundary[] = [];
+const pellets: Pellet[] = [];
+const powerUps: PowerUp[] = [];
+drawMap(map, boundaries, pellets, powerUps);
+function circleCollidesWithRec(circle: Player | Ghost, rectangle: Boundary) {
+  const padding = Boundary.width / 2 - circle.reduce - 1;
   return (
     circle.position.y - circle.reduce + circle.velocity.y <=
-      rectangle.position.y + rectangle.height &&
+      rectangle.position.y + rectangle.height + padding &&
     circle.position.x + circle.reduce + circle.velocity.x >=
-      rectangle.position.x &&
+      rectangle.position.x - padding &&
     circle.position.y + circle.reduce + circle.velocity.y >=
-      rectangle.position.y &&
+      rectangle.position.y - padding &&
     circle.position.x - circle.reduce + circle.velocity.x <=
-      rectangle.position.x + rectangle.width
+      rectangle.position.x + rectangle.width + padding
   );
 }
+
 function animation() {
-  window.requestAnimationFrame(animation);
+  myReq = window.requestAnimationFrame(animation);
   context?.clearRect(0, 0, canvas.width, canvas.height);
   if (keys.w.pressed && lastKey === "w") {
     for (const boundary of boundaries) {
@@ -170,6 +144,57 @@ function animation() {
       }
     }
   }
+  for (let i = 0; i < powerUps.length; i++) {
+    const powerUp = powerUps[i];
+    powerUp?.draw();
+    if (
+      Math.hypot(
+        powerUp.position.x - player.position.x,
+        powerUp.position.y - player.position.y
+      ) <
+      powerUp.reduce + player.reduce
+    ) {
+      powerUps.splice(i, 1);
+      ghosts.forEach((ghost) => {
+        ghost.scared = true;
+        setTimeout(() => {
+          ghost.scared = false;
+        }, 5000);
+      });
+    }
+  }
+  for (let i = ghosts.length - 1; i >= 0; i--) {
+    const ghost = ghosts[i];
+    if (
+      Math.hypot(
+        ghost.position.x - player.position.x,
+        ghost.position.y - player.position.y
+      ) <
+      ghost.reduce + player.reduce
+    ) {
+      if (ghost.scared) {
+        ghosts.splice(i, 1);
+      } else {
+        lost = true;
+        window.cancelAnimationFrame(myReq);
+      }
+    }
+  }
+
+  for (let i = pellets.length - 1; 0 <= i; i--) {
+    const pellet = pellets[i];
+    pellet.draw();
+    if (
+      Math.hypot(
+        pellet.position.x - player.position.x,
+        pellet.position.y - player.position.y
+      ) <
+      pellet.reduce + player.reduce
+    ) {
+      pellets.splice(i, 1);
+    }
+  }
+
   boundaries.forEach((boundary) => {
     boundary.draw();
     if (circleCollidesWithRec(player, boundary)) {
@@ -178,9 +203,112 @@ function animation() {
     }
   });
   player.update();
-  // player.velocity.y = 0;
-  // player.velocity.x = 0;
+  ghosts.forEach((ghost) => {
+    ghost.update();
+    const collisions: ("right" | "left" | "up" | "down")[] = [];
+    for (const boundary of boundaries) {
+      if (
+        !collisions.includes("right") &&
+        circleCollidesWithRec(
+          {
+            ...ghost,
+            velocity: { y: 0, x: ghost.speed },
+          } as Ghost,
+          boundary
+        )
+      ) {
+        collisions.push("right");
+      }
+      if (
+        !collisions.includes("left") &&
+        circleCollidesWithRec(
+          {
+            ...ghost,
+            velocity: { y: 0, x: -ghost.speed },
+          } as Ghost,
+          boundary
+        )
+      ) {
+        collisions.push("left");
+      }
+      if (
+        !collisions.includes("up") &&
+        circleCollidesWithRec(
+          {
+            ...ghost,
+            velocity: { x: 0, y: -ghost.speed },
+          } as Ghost,
+          boundary
+        )
+      ) {
+        collisions.push("up");
+      }
+      if (
+        !collisions.includes("down") &&
+        circleCollidesWithRec(
+          {
+            ...ghost,
+            velocity: { x: 0, y: ghost.speed },
+          } as Ghost,
+          boundary
+        )
+      ) {
+        collisions.push("down");
+      }
+    }
+    if (collisions.length > ghost.prevCollision.length) {
+      ghost.prevCollision = collisions;
+    }
+    if (JSON.stringify(collisions) !== JSON.stringify(ghost.prevCollision)) {
+      if (ghost.velocity.x > 0 && !ghost.prevCollision.includes("right"))
+        ghost.prevCollision.push("right");
+      else if (ghost.velocity.x < 0 && !ghost.prevCollision.includes("left"))
+        ghost.prevCollision.push("left");
+      else if (ghost.velocity.y < 0 && !ghost.prevCollision.includes("up"))
+        ghost.prevCollision.push("up");
+      else if (ghost.velocity.y > 0 && !ghost.prevCollision.includes("down"))
+        ghost.prevCollision.push("down");
+      const pathWay = ghost.prevCollision.filter((collision) => {
+        return !collisions.includes(collision);
+      });
+
+      const direction = pathWay[Math.floor(Math.random() * pathWay.length)];
+      switch (direction) {
+        case "down":
+          ghost.velocity.x = 0;
+          ghost.velocity.y = ghost.speed;
+          break;
+        case "up":
+          ghost.velocity.x = 0;
+          ghost.velocity.y = -ghost.speed;
+          break;
+        case "right":
+          ghost.velocity.x = ghost.speed;
+          ghost.velocity.y = 0;
+          break;
+        case "left":
+          ghost.velocity.x = -ghost.speed;
+          ghost.velocity.y = 0;
+          break;
+      }
+      ghost.prevCollision = [];
+    }
+  });
+  if (pellets.length === 0) {
+    win = true;
+    window.cancelAnimationFrame(myReq);
+  }
+  if (player.velocity.x > 0) {
+    player.rotation = 0;
+  } else if (player.velocity.x < 0) {
+    player.rotation = Math.PI;
+  } else if (player.velocity.y > 0) {
+    player.rotation = Math.PI / 2;
+  } else if (player.velocity.y < 0) {
+    player.rotation = Math.PI * 1.5;
+  }
 }
+
 animation();
 
 window.addEventListener("keydown", ({ key }) => {
@@ -194,7 +322,6 @@ window.addEventListener("keydown", ({ key }) => {
     case "s":
       keys.s.pressed = true;
       lastKey = "s";
-
       break;
     case "a":
       keys.a.pressed = true;
@@ -204,7 +331,16 @@ window.addEventListener("keydown", ({ key }) => {
     case "d":
       keys.d.pressed = true;
       lastKey = "d";
-
+      break;
+    case " ":
+      if (!lost || win)
+        if (!pause) {
+          window.cancelAnimationFrame(myReq);
+          pause = true;
+        } else {
+          pause = false;
+          animation();
+        }
       break;
   }
 });
@@ -212,6 +348,7 @@ window.addEventListener("keyup", ({ key }) => {
   switch (key.toLowerCase()) {
     case "w":
       keys.w.pressed = false;
+      break;
     case "s":
       keys.s.pressed = false;
       break;
