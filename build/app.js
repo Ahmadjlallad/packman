@@ -2,26 +2,23 @@
 import drawMap from "./src/map.js";
 import { context, canvas } from "./src/contextService.js";
 import { Player, Boundary, Ghost } from "./src/gameObjects.js";
+const score = document.getElementById("score");
+const pauseElement = document.getElementById("pause");
+const winElement = document.getElementById("win");
+const loseElement = document.getElementById("lose");
 let myReq = 0;
 let pause = false;
 let lost = false;
 let win = false;
-const keys = {
-    w: {
-        pressed: false,
-    },
-    a: {
-        pressed: false,
-    },
-    s: {
-        pressed: false,
-    },
-    d: {
-        pressed: false,
-    },
+const didVarChange = (lastArg) => (newArg) => {
+    if (lastArg !== newArg) {
+        lastArg = newArg;
+        return true;
+    }
+    return false;
 };
-let lastKey = "";
-const ghosts = [
+let lastKey = [];
+let ghosts = [
     new Ghost({
         position: {
             x: Boundary.width * 6 + Boundary.width / 2,
@@ -39,7 +36,7 @@ const ghosts = [
         color: "pink",
     }),
 ];
-const player = new Player({
+let player = new Player({
     position: {
         x: Boundary.width + Boundary.width / 2,
         y: Boundary.height + Boundary.height / 2,
@@ -49,6 +46,36 @@ const player = new Player({
         y: 0,
     },
 });
+const reCreatePlayerAndGhost = () => {
+    ghosts = [
+        new Ghost({
+            position: {
+                x: Boundary.width * 6 + Boundary.width / 2,
+                y: Boundary.height + Boundary.height / 2,
+            },
+            velocity: { x: Ghost.speed, y: 0 },
+            color: "red",
+        }),
+        new Ghost({
+            position: {
+                x: Boundary.width * 6 + Boundary.width / 2,
+                y: Boundary.height * 3 + Boundary.height / 2,
+            },
+            velocity: { x: Ghost.speed, y: 0 },
+            color: "pink",
+        }),
+    ];
+    player = new Player({
+        position: {
+            x: Boundary.width + Boundary.width / 2,
+            y: Boundary.height + Boundary.height / 2,
+        },
+        velocity: {
+            x: 0,
+            y: 0,
+        },
+    });
+};
 const map = [
     ["1", "-", "-", "-", "-", "-", "-", "-", "-", "-", "2"],
     ["|", ".", ".", ".", ".", ".", ".", ".", ".", ".", "|"],
@@ -65,9 +92,11 @@ const map = [
     ["4", "-", "-", "-", "-", "-", "-", "-", "-", "-", "3"],
 ];
 const boundaries = [];
-const pellets = [];
+let pellets = [];
 const powerUps = [];
 drawMap(map, boundaries, pellets, powerUps);
+const maxScoreCanGet = pellets.length;
+const saveScore = didVarChange(1);
 function circleCollidesWithRec(circle, rectangle) {
     const padding = Boundary.width / 2 - circle.reduce - 1;
     return (circle.position.y - circle.reduce + circle.velocity.y <=
@@ -80,11 +109,14 @@ function circleCollidesWithRec(circle, rectangle) {
             rectangle.position.x + rectangle.width + padding);
 }
 function animation() {
+    if (saveScore(maxScoreCanGet - pellets.length)) {
+        score.innerText = (maxScoreCanGet - pellets.length).toFixed();
+    }
     myReq = window.requestAnimationFrame(animation);
     context === null || context === void 0 ? void 0 : context.clearRect(0, 0, canvas.width, canvas.height);
-    if (keys.w.pressed && lastKey === "w") {
+    if (lastKey.includes("w")) {
         for (const boundary of boundaries) {
-            if (circleCollidesWithRec(Object.assign(Object.assign({}, player), { velocity: Object.assign(Object.assign({}, player.velocity), { y: -5 }) }), boundary)) {
+            if (circleCollidesWithRec(Object.assign(Object.assign({}, player), { velocity: { x: 0, y: -5 } }), boundary)) {
                 player.velocity.y = 0;
                 break;
             }
@@ -93,9 +125,9 @@ function animation() {
             }
         }
     }
-    else if (keys.s.pressed && lastKey === "s") {
+    if (lastKey.includes("s")) {
         for (const boundary of boundaries) {
-            if (circleCollidesWithRec(Object.assign(Object.assign({}, player), { velocity: Object.assign(Object.assign({}, player.velocity), { y: 5 }) }), boundary)) {
+            if (circleCollidesWithRec(Object.assign(Object.assign({}, player), { velocity: { x: 0, y: 5 } }), boundary)) {
                 player.velocity.y = 0;
                 break;
             }
@@ -104,10 +136,10 @@ function animation() {
             }
         }
     }
-    else if (keys.a.pressed && lastKey === "a") {
+    if (lastKey.includes("a")) {
         for (const boundary of boundaries) {
-            if (circleCollidesWithRec(Object.assign(Object.assign({}, player), { velocity: Object.assign(Object.assign({}, player.velocity), { x: -5 }) }), boundary)) {
-                player.velocity.x = -0;
+            if (circleCollidesWithRec(Object.assign(Object.assign({}, player), { velocity: { y: 0, x: -5 } }), boundary)) {
+                player.velocity.x = 0;
                 break;
             }
             else {
@@ -115,9 +147,9 @@ function animation() {
             }
         }
     }
-    else if (keys.d.pressed && lastKey === "d") {
+    if (lastKey.includes("d")) {
         for (const boundary of boundaries) {
-            if (circleCollidesWithRec(Object.assign(Object.assign({}, player), { velocity: Object.assign(Object.assign({}, player.velocity), { x: 5 }) }), boundary)) {
+            if (circleCollidesWithRec(Object.assign(Object.assign({}, player), { velocity: { y: 0, x: 5 } }), boundary)) {
                 player.velocity.x = 0;
                 break;
             }
@@ -150,6 +182,7 @@ function animation() {
             else {
                 lost = true;
                 window.cancelAnimationFrame(myReq);
+                loseElement.classList.remove("hidden");
             }
         }
     }
@@ -230,6 +263,7 @@ function animation() {
     if (pellets.length === 0) {
         win = true;
         window.cancelAnimationFrame(myReq);
+        winElement.classList.remove("hidden");
     }
     if (player.velocity.x > 0) {
         player.rotation = 0;
@@ -250,47 +284,58 @@ window.addEventListener("keydown", ({ key }) => {
         // in the web dev every thing start from the top
         // so if its reversed
         case "w":
-            keys.w.pressed = true;
-            lastKey = "w";
+            !lastKey.includes("w") && lastKey.push("w");
             break;
         case "s":
-            keys.s.pressed = true;
-            lastKey = "s";
+            !lastKey.includes("s") && lastKey.push("s");
             break;
         case "a":
-            keys.a.pressed = true;
-            lastKey = "a";
+            !lastKey.includes("a") && lastKey.push("a");
             break;
         case "d":
-            keys.d.pressed = true;
-            lastKey = "d";
+            !lastKey.includes("d") && lastKey.push("d");
             break;
         case " ":
-            if (!lost || win)
+            if (!lost && !win)
                 if (!pause) {
                     window.cancelAnimationFrame(myReq);
                     pause = true;
+                    pauseElement.classList.remove("hidden");
                 }
                 else {
                     pause = false;
+                    pauseElement.classList.add("hidden");
                     animation();
                 }
+            break;
+        case "r":
+            window.cancelAnimationFrame(myReq);
+            winElement.classList.add("hidden");
+            loseElement.classList.add("hidden");
+            pellets = [];
+            drawMap(map, boundaries, pellets, powerUps);
+            reCreatePlayerAndGhost();
+            saveScore(1);
+            animation();
+            win = false;
+            lost = false;
             break;
     }
 });
 window.addEventListener("keyup", ({ key }) => {
     switch (key.toLowerCase()) {
         case "w":
-            keys.w.pressed = false;
+            lastKey = lastKey.filter((keys) => keys !== "w");
             break;
         case "s":
-            keys.s.pressed = false;
+            lastKey = lastKey.filter((keys) => keys !== "s");
             break;
         case "a":
-            keys.a.pressed = false;
+            lastKey = lastKey.filter((keys) => keys !== "a");
             break;
         case "d":
-            keys.d.pressed = false;
+            lastKey = lastKey.filter((keys) => keys !== "d");
             break;
     }
 });
+document.addEventListener("contextmenu", (event) => event.preventDefault());
