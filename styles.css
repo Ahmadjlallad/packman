@@ -1,0 +1,42 @@
+@font-face {
+  font-family: "PacFont";
+  src: url("./American\ Captain.ttf");
+}
+body {
+  margin: 0;
+  background-color: black;
+  overflow: hidden;
+  font-family: "PacFont";
+}
+p {
+  color: aliceblue;
+  font-family: "PacFont";
+  font-size: 2rem;
+  margin-bottom: 0;
+  margin-top: 0;
+  padding: 10px;
+}
+.modal {
+  position: absolute;
+  top: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  right: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-items {
+  font-size: 3rem;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  align-content: center;
+  opacity: 1;
+}
+.hidden {
+  display: none;
+}

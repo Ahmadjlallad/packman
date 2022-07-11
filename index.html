@@ -6,28 +6,32 @@
       content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
     />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-    <title>pack man</title>
-    <style>
-      body {
-        margin: 0;
-        background-color: black;
-        overflow: hidden;
-      }
-      p {
-        color: aliceblue;
-        font-family: sans-serif;
-        font-size: 14px;
-        margin-bottom: 0;
-        padding: 10px;
-      }
-    </style>
+    <title>Packman Clone</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <p><span>Score: </span><span> </span></p>
+    <p><span>Score: </span><span id="score"> </span></p>
+    <p>Press R to restart the game at any time</p>
+
     <canvas id="canvas"></canvas>
-    <!-- <script type="module" src="contextService.js"></script>
-    <script type="module" src="map.js"></script>
-    <script type="module" src="gameObjects.js"></script> -->
     <script type="module" src="./build/app.js"></script>
+    <div id="pause" class="modal hidden">
+      <div class="modal-items">
+        <div>Pause</div>
+        <div>Press space key to resume</div>
+      </div>
+    </div>
+    <div id="win" class="modal hidden">
+      <div class="modal-items">
+        <div>YOU WON</div>
+        <div>Press R key to Retry</div>
+      </div>
+    </div>
+    <div id="lose" class="modal hidden">
+      <div class="modal-items">
+        <div>YOU LOST</div>
+        <div>Press R key to Retry</div>
+      </div>
+    </div>
   </body>
 </html>
